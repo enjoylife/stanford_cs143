@@ -1,0 +1,219 @@
+README file for Programming Assignment 4  (Java edition)
+=======================================================
+
+Your directory should now contain the following files:
+
+ Makefile
+ README
+ CgenClassTable.java
+ CgenNode.java
+ BoolConst.java
+ IntSymbol.java
+ StringSymbol.java
+ CgenSupport.java
+ TreeConstants.java
+ lexer				link to reference lexer
+ parser                         link to reference parser
+ semant				link to reference semant
+ mycoolc			wrapper to run coolc with your cgen-x86
+ tests/example.cl		sample test
+ src/*				support code
+
+	The Makefile contains targets for compiling and running your
+	program, as well as handing it in. DO NOT MODIFY.
+
+	The README contains this info. Part of the assignment is to
+	fill the README with the write-up for your project. You should
+	explain design decisions, explain why your code is correct,
+	and why your test cases are adequate. It is part of the
+	assignment to clearly and concisely explain things in text as
+	well as to comment your code. Just edit this file.
+
+	In tests/*.cl you should write correct Cool programs which
+	test as many aspects of the code generator as possible. It
+	should pass your code generator, and running the resulting
+        executable should generate the expected output.
+
+	CgenClassTable.java CgenNode.java are the skeleton files for
+	the code generator. These skeletons are much larger than the
+	ones for previous assignments.  The skeletons provides three
+	components of the code generator:
+
+		- functions to build the inheritance graph; (we supply
+		  this in case you didn't get this working for PA4)
+
+		- functions to emit global data and constants;
+		 
+	You should work to understand this code, and it will help you
+        write the rest of the code generator.
+
+        TreeNode.java and ListNode.java contain definitions used by
+        the tree package. DO NOT MODIFY.
+
+        cool-tree.java specifies and give an implementation of Cool
+        ASTs (see the README for PA3 and the "Cool Tour").  In this
+        assignment, you will need to complete the code generating
+        methods for all Cool expression nodes.
+
+	BoolConst.java, IntSymbol.java, and StringSymbol.java are used
+        to manage constants in Cool programs.  You will need to
+        complete the method for generating constant definitions in
+        each of these classes.
+
+	CgenSupport.java is general support code for the code
+	generator.  You can add functions and constants as you see
+	fit, but do not modify anything that's already there.  This
+	class also serves as a placeholder for a bunch of constants as
+	well as functions to emit spim instructions (we supply these
+	to save you some tedious coding).
+
+	TreeConstants.java defined some useful symbol constants.  You
+	may add some of your own, if you wish.
+
+	ASTLexer.java, ASTParser.java, and ASTConstants.java implement
+	a lexer and a parser for reading text representation of ASTs
+	from console in the format produced by the parser phase. DO
+	NOT MODIFY.
+
+	Cgen.java supplies the driver for the compiler. You should not
+        modify this code.  The script mycoolc can pass any of the
+        standard flags to the code generator; for this assignment, -c
+        (code generator debug) may be useful as it sets a global
+        variable cgen_debug to true (1).  If you want your code
+        generator to print debug information when the option is set,
+        write your debug code in the following format:
+
+	      if (cgen_debug)
+	      {
+		...
+	      }
+
+	SymbolTable.java contains a symbol table implementation. Read
+	the comments in the file and look at the example in
+	SymtabExample.java.  You are not required to use this code,
+	but you may find it useful. DO NOT MODIFY.
+
+Instructions
+------------
+
+	To compile your compiler and code generator type:
+
+	% make cgen
+
+	To test your compiler, type:
+
+	% ./mycoolc <file1.cl>
+
+	This command parses all the cool files given on the command
+	line, passes them through the semantic checker, and then hands
+	the program AST to your code generator.
+
+	To run your compiler on the file example.cl, type:
+
+	% make dotest
+
+	To run the produced code:
+
+	% ./file1
+	
+	To submit your work type:
+
+	% make submit
+
+	And run the "submit" program following the instructions on the
+	course web page.
+	
+ 	You may turn in the assignment as many times as you like.
+ 	However, only the last version will be retained for grading.
+
+	If you change architectures you must issue
+
+	% make clean
+
+	when you switch from one type of machine to the other.  If at
+	some point you get weird errors from the linker, you probably
+	forgot this step.
+
+	GOOD LUCK!
+
+---8<------8<------8<------8<---cut here---8<------8<------8<------8<---
+
+Write-up for PA4
+----------------
+
+Design Decisions:
+----------------
+class_namTab - The class tags are assigned recursively to ensure that child classes have
+higher class tag values than their parents classes. This was done to make the case expression
+code generation simpler as explained later. The class tags are then sorted and used to generate
+the class_ObjTab.
+
+class_ObjTab - contains the pointers to the prototype objects and init objects
+for classes in order of their class tags.
+
+class_dispTab - The dispatch tables have pointers to the methods in the class. They are ordered
+to first contain the methods inherited from parent classes followed by those of the class itself.
+The methods are listed in the form class.method to show the class that contains the relevant method
+definition.
+
+class_protObj - Prototype objects for each class are defined. The order of attributes is the same as
+the order of methods mentioned above. Each attribute is given the default value as specified in the manual.
+
+class_init - Each class init consists of a call to the parent class init followed by the attribute initialization
+Each attribute is stored in a symbol table which maps the attribute name to its offset from the self pointer in the
+activation record. This is done for ease of loading the attribute values later in the code.
+Since the attributes can be initialized using expressions of any type, the assignLocals method is called to ensure that
+that the space for locals within attribute initialization is appropriately reserved.(more info on assignLocals later)
+Each attribute to initialized if init exists or set to its default value if init does not exist.
+
+Data Structures:
+2 symbol tables are maintained, 1 for attribute names mapping to their offset from self pointer as mentioned above,
+and 1 for formals and locals mapping to their offset from the frame pointer.(as suggested in class)
+A map is maintained for class names to list of methods of the class(including inherited methods). This acts like the
+implementation from operational semantics. Additional structures such as method names to method definition etc. are
+maintained for ease of implementation.
+
+method Definition -
+AssignLocals - slots in the AR are assigned only to named local variables as suggested in class. These are done by a
+pass through the AST using the assignLocals method shown in class to reserve a slot for case branches and let bindings.
+After the number of slots is determined, the stack pointer is moved to its appropriate position. and the code generation
+for the expression begins.(Described later). The stack pointer is readjusted using the number of locals after the
+expression code generation is complete.
+
+expressions - All the code generation for expressions is done according to the operational semantics from the Cool
+reference manual. If a variable exists in the attribute symbol table as well as formal and local symbol table, the
+latter is given the preference.
+Case: After handling the case abort 2, the branches for the case statement are sorted in decreasing order of class tag.
+Within each branch, the new variable is saved on the local slot that is previously defined by the assign locals method
+If the class does not have any children, branch off and handle the expression code generation. If the class does have
+children, get the closest ancestor as defined in the operational semantics.
+The code generation for the expression in the branch is done keeping in mind that the new variable is in scope.
+New: The class tag is used to find the position of the prototype object pointer and init object pointer from the
+class_objTab since they are ordered as mentioned above.
+self: any reference to self is handled by loading the value at an offset of 2 from the frame pointer.
+
+The subexpressions are not assigned separate slots on the AR, they are pushed and popped from the stack. Divide
+operation is handled a little differently as it is signed. As suggested on Piazza, the dividend is stored in %edx and
+%eax by using the sarl command.
+
+codeConstants - codeConstants method (for string and int constants) has been moved to the end of the code generation.
+This was done to ensure that the int constants introduced during code generation for expressions(such as line numbers)
+are defined along with the predefined constants from the AST.
+
+There are some additional tables such as parent table and class attribute tables that aren't
+used during the code generation but were created to match the output of the reference compiler. Please ignore
+these.
+
+Garbage collection:
+Replaced bulk adding space to stack pointer to push $0 multiple times.This ensures that everything on the stack is a
+pointer. Also, pushed caller saved registers onto the stack in methods that take care of attribute initialization and
+assign expression.(whenever attribute is edited) Then called GC_Assign and popped the registers from the stack to
+restore them.
+
+Testing:
+-------
+Each expression type is tested separately in unit tests. Please see the tests directory to find the detailed description
+of each test case.
+Integration testing was done using the examples provided in the class directory.
+Garbage collection has not been thoroughly tested and definitely is not complete due to time constraints.
+Due to all of the above design decisions and test cases, I believe that the code generator works for most Cool programs.

@@ -1,0 +1,225 @@
+README file for Programming Assignment 3 (Java edition)
+======================================================
+
+Your directory should now contain the following files:
+
+ Makefile
+ README
+ cool-tree.java
+ ClassTable.java
+ TreeConstants.java
+ lexer				link to reference lexer
+ parser                         link to reference parser
+ mysemant			wrapper to your semant
+ mycoolc			wrapper to run coolc with your semant
+ tests/bad.cl			\ sample tests
+ tests/good.cl			/
+ src/*				support code
+
+	The Makefile contains targets for compiling and running your
+	program. DO NOT MODIFY.
+
+	The README contains this info. Part of the assignment is to fill
+	the README with the write-up for your project. You should
+	explain design decisions, explain why your code is correct, and
+	why your test cases are adequate. It is part of the assignment
+	to clearly and concisely explain things in text as well as to
+	comment your code.  Just edit this file.
+
+	good.cl and bad.cl test a few features of the semantic checker.
+        You should add additional tests to the tests/ directory to 
+        improve coverage (e.g exercises as many kinds of semantic errors
+	as possible).
+
+	cool-tree.aps contains the definitions for the tree language
+	which you use to construct the abstract syntax tree (AST). This
+	file is provided for your reference.  DO NOT MODIFY.
+
+        TreeNode.java and ListNode.java contain definitions used by the
+        tree package. DO NOT MODIFY.  
+
+        cool-tree.java specifies and gives an implementation of Cool ASTs
+        (see the README for PA2 and the "Cool Tour").  In this
+        assignment, you will need to add functions to the AST classes to
+        store, fetch, and compute information about the AST.
+
+   	You should NOT remove any definitions that are already present
+   	in cool-tree.java.  These function and data members are required
+   	for the system to function properly.
+
+        You should add any fields and methods to the classes you need to
+        perform semantic analysis.  You will need to add, for example,
+        methods which traverse the expressions of the tree and implement
+        the type-checking rules.  The entry point to the semantic
+        analyzer is program.semant().
+
+	ClassTable.java implements a placeholder class for a few useful
+	methods.  Feel free to extend it to implement some real data
+	strucutre.
+
+	TreeConstants.java defined some useful symbol constants.  You
+	may add some of your own, if you wish.
+
+	ASTLexer.java, ASTParser.java, and ASTConstants.java implement a
+	lexer and a parser for reading text representation of ASTs from
+	console in the format produced by the parser phase. DO NOT
+	MODIFY.
+
+        Semant.java contains a driver to test the analyzer.  The main
+        method reads an AST in text form from standard input, parses it,
+        and then produces a type-annotated AST on standard output.  The
+        script mycoolc can pass any of the standard flags to the
+        semantic analyzer as well; for this assignment, -s (semantic
+        analysis debug) may be useful as it sets a static variable
+        Flags.semant_debug to "true".  If you want your semantic checker
+        to print debug information when the option is set, write your
+        debug code in the following format:
+
+	      if (Flags.semant_debug)
+	      {
+		...
+	      }
+
+	semant_debug is provided as a convenience. You don't need to use
+	the debugging flags if you don't want to. DON'T MODIFY
+	Semant.java
+
+	SymbolTable.java contains a symbol table implementation. Read
+	the comments in the file and look at the example in
+	SymtabExample.java.  You are not required to use this code, but
+	you may find it useful. DO NOT MODIFY.
+
+Instructions
+------------
+
+	To compile the example use of the symbol table, type
+
+	% gmake symtab-example
+
+	This creates a shell script to run the symbol table example.
+
+	To compile your semantic analyzer program type:
+
+	% gmake semant
+
+	To test your semantic checker, type:
+
+	% mysemant foo.cl
+
+	mysemant is a version of mycoolc that omits code generation.
+	mysemant parses all the cool files given on the command line and
+	builds a single abstract syntax tree containing all class
+	definitions appearing in the input files. Your semantic checker
+	is then called on this abstract syntax tree.  If there are no
+	errors, the program produces a type-annotated abstract syntax
+	tree as output.
+
+	To run your checker on the files good.cl and bad.cl type:
+
+	% gmake dotest
+
+	If you think your semantic checker is correct and behaves like
+	the one we wrote, you can try to run mycoolc using your checker,
+	your parser and also your lexical analyzer if you choose (see
+	below for instructions).  Remember if your lexer, parser or
+	checker behaves in an unexpected manner, you may get errors
+	anywhere.
+
+	To turnin your work type:
+
+	% gmake submit-clean
+
+	And run the "submit" program following the instructions on the
+	course web page.
+	
+	Running "submit" will collect the files cool-tree.java,
+	ClassTable.java, TreeConstants.java, good.cl, bad.cl,
+	good.output, bad.output, and README. Don't forget to edit the
+	README file to include your write-up, and to write your own test
+	cases in good.cl and bad.cl.
+
+ 	You may turn in the assignment as many times as you like.
+ 	However, only the last version will be retained for grading.
+
+	If you change architectures you must issue
+
+	% gmake clean
+
+	when you switch from one type of machine to the other.
+	If at some point you get weird errors from the linker,	
+	you probably forgot this step.
+
+	GOOD LUCK!
+
+---8<------8<------8<------8<---cut here---8<------8<------8<------8<---
+
+Write-up for PA3
+----------------
+
+Inheritance:
+The semantics at the class level are done in the constructor for the classTable.
+The first pass of the AST looks through all the class definitions and creates a HashMap of class names
+and their corresponding definitions. This is done because class names are global and they can be
+referenced before they are defined. The names are also checked to be unique in this pass of the AST.
+The basic classes are also added to this map to ensure they are accessible within the program.
+
+The second pass across the classNamesTable(HashMap of class names and class definitions) is to ensure
+that all the inheritance semantics are satisfied. These include error in inheriting from basic classes and
+checking to see that parent classes exist for each inherited class. This pass creates an inheritance table that
+keeps track of all the class names and their parent definitions. (Although this table is redundant as it doesn't add
+any more information than we could get directly from the classNamesTable, it is added for convenience.)
+
+The pass across the inheritance table then determines whether the inheritance graph contains a cycle. An appropriate
+error is thrown otherwise.
+
+These steps together determine proper class definitions and inheritance graphs. The semantics for the features within
+the class are checked later in the program. If errors are found in this section of the semantic analysis, the program
+DOES NOT recover. (According to the assignment specs)
+
+Main class
+Since main class is a special case, a separate method handles the checks on it. These checks include, the existence of
+a Main class, existence of a main() method and making sure that main method does not have any formals.
+
+Symbol Tables and scoping (Attributes and methods)
+Each class maintains 2 symbol tables to define the scope. 1. attrSymTable and 2.methodSymTable. As the names suggest,
+these tables contain the attributes and methods in scope respectively. Since attributes and methods do NOT share
+namespace, two different symbol tables were designed.
+Attributes and methods have a separate pass of their own because they are global within a class definition.
+The program first passes over the list of classes to add all the features defined within the class definition. The
+program simultaneously adds the attributes and methods into their respective symbol tables.
+The second pass over the list of classes ensures that the inherited attributes for each of the class is added into
+the symbol tables appropriately. Semantic checks ensure that these additions to the symbol table are legal.(Attributes
+can be inherited but not redefined. Methods can be redefined ONLY if they have the same formal types and return type.)
+The basic classes are treated no differently than the user defined classes as the String, Int and Bool classes should
+inherit methods from the Object class.
+
+Type checking and scoping
+The final pass through the map of legal class names is made to ensure that all remaining expressions etc. are
+semantically correct. The program starts with each class, going into each feature which further checks each expression
+in the cool program. Rules for the type checking and scoping within features and expressions are directly picked up
+from the Cool Reference Manual. Also, referred to http://www.cs.virginia.edu/~weimer/415/cool-manual/node43.html for a
+step by step description of the semantic rules in Cool.
+Scope is added in the methods, case statement branches and let statements as described in the rules. self is mapped
+to SELF_TYPE in the symbol table because (SELF_TYPE is the type of self) and converted to the appropriate class type
+within the code.
+
+Error Handling
+Several special cases are added to make sure error handling is done appropriately. Expressions with no defined types are
+set to type No_Type to catch boiled up errors. If No_Type is found to be the type of a subexpression,
+the case is handled differently. No_type also results in some additional errors being reported such as in the case of
+a + b where a is undefined. This results in 2 errors, undefined identifier a and non-Int arguments No_type + Int.
+
+Recovery from operator expressions(+, -, /, * etc.) is achieved by setting the return type to the
+expected type(ex: Int in case of plus etc.) after reporting the error to avoid boiling up the error.
+Additional null checks are added in several places of the code to avoid NPEs for undefined identifiers.
+Checks for No_Type is added to make sure no additional checks are done if an expression has No_Type.
+
+Testing:
+The code has been extensively tested by checking the negative and positive cases for each expression type. The negative
+test cases have been created and added to the tests directory. For positive testing, the program has also created
+the appropriately annotated AST for each of the examples provided to us.(Since, these examples cover most of the
+features of Cool).
+For descriptions of each test case, please refer to the test files.
+
+Hence, rechecking the documentation for specifications of a semantic analyzer for Cool and performing extensive testing
+on the program, I think that the semantic checker is correct and covers most of the cases.
